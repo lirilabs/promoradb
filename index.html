@@ -1,67 +1,209 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>PromoraDB</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromoraDB Dashboard</title>
+
 <style>
-body { background:#111;color:#fff;font-family:sans-serif }
-input,button { margin:5px;padding:10px;border-radius:8px }
-img { width:120px;margin:10px }
+body {
+  margin: 0;
+  font-family: system-ui;
+  background: #0f172a;
+  color: #fff;
+}
+
+header {
+  padding: 15px;
+  background: #020617;
+  text-align: center;
+  font-size: 20px;
+  font-weight: bold;
+}
+
+.container {
+  padding: 20px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+input, button {
+  padding: 10px;
+  margin: 5px 0;
+  border-radius: 8px;
+  border: none;
+  width: 100%;
+}
+
+button {
+  background: #22c55e;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  opacity: 0.8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px,1fr));
+  gap: 10px;
+}
+
+.image-card {
+  background: #020617;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.actions button {
+  margin-top: 5px;
+  background: #ef4444;
+}
+
+.project-actions {
+  display: flex;
+  gap: 10px;
+}
 </style>
 </head>
+
 <body>
 
-<h2>Upload</h2>
-<input id="uid" placeholder="uid">
-<input id="pid" placeholder="promptId">
-<input id="url" placeholder="image url">
-<button onclick="upload()">Upload</button>
+<header>🚀 PromoraDB Dashboard</header>
 
-<h2>List</h2>
-<button onclick="list()">Load</button>
+<div class="container">
 
-<div id="images"></div>
+<!-- ================= UPLOAD ================= -->
+<div class="card">
+<h3>📤 Upload Image</h3>
+
+<input id="uid" placeholder="User ID">
+<input id="promptId" placeholder="Project ID">
+<input id="imageUrl" placeholder="Image URL">
+
+<button onclick="upload()">Upload Image</button>
+</div>
+
+<!-- ================= PROJECT CONTROL ================= -->
+<div class="card">
+<h3>📂 Project Control</h3>
+
+<input id="view_uid" placeholder="User ID">
+<input id="view_promptId" placeholder="Project ID">
+
+<div class="project-actions">
+  <button onclick="loadImages()">Load Images</button>
+  <button onclick="deleteProject()" style="background:red;">Delete Project</button>
+</div>
+</div>
+
+<!-- ================= IMAGES ================= -->
+<div class="card">
+<h3>🖼 Images</h3>
+<div id="images" class="grid"></div>
+</div>
+
+</div>
 
 <script>
 const BASE = "https://promoradb.vercel.app";
 
-async function upload(){
-  const res = await fetch(BASE+"/api/image-store",{
-    method:"POST",
-    headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({
-      uid:uid.value,
-      promptId:pid.value,
-      imageUrl:url.value
+// ================= UPLOAD =================
+async function upload() {
+  const res = await fetch(BASE + "/api/image-store", {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({
+      uid: uid.value,
+      promptId: promptId.value,
+      imageUrl: imageUrl.value
     })
   });
-  alert("Uploaded");
+
+  const data = await res.json();
+  alert("Uploaded ✅");
 }
 
-async function list(){
-  const res = await fetch(`${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}`);
+// ================= LOAD =================
+async function loadImages() {
+  const res = await fetch(
+    `${BASE}/api/image-serve?uid=${view_uid.value}&promptId=${view_promptId.value}`
+  );
+
   const data = await res.json();
+  renderImages(data.images || []);
+}
 
-  images.innerHTML = "";
+// ================= RENDER =================
+function renderImages(images) {
+  const container = document.getElementById("images");
+  container.innerHTML = "";
 
-  data.images.forEach(img=>{
+  if (images.length === 0) {
+    container.innerHTML = "<p>No images found</p>";
+    return;
+  }
+
+  images.forEach(img => {
     const div = document.createElement("div");
+    div.className = "image-card";
 
     div.innerHTML = `
-      <img src="${img.cdnUrl}">
-      <br>
-      <button onclick="del('${img.filename}')">Delete</button>
-      <hr>
+      <img src="${img.cdnUrl}" />
+      <small>${img.filename}</small>
+
+      <div class="actions">
+        <button onclick="viewImage('${img.filename}')">View</button>
+        <button onclick="deleteImage('${img.filename}')">Delete</button>
+      </div>
     `;
 
-    images.appendChild(div);
+    container.appendChild(div);
   });
 }
 
-async function del(file){
-  await fetch(`${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}&filename=${file}`,{
-    method:"DELETE"
-  });
-  list();
+// ================= VIEW =================
+function viewImage(filename) {
+  const url = `${BASE}/api/image-serve?uid=${view_uid.value}&promptId=${view_promptId.value}&filename=${filename}`;
+  window.open(url, "_blank");
+}
+
+// ================= DELETE IMAGE =================
+async function deleteImage(filename) {
+  if (!confirm("Delete this image?")) return;
+
+  await fetch(
+    `${BASE}/api/image-delete?uid=${view_uid.value}&promptId=${view_promptId.value}&filename=${filename}`,
+    { method: "DELETE" }
+  );
+
+  loadImages();
+}
+
+// ================= DELETE PROJECT =================
+async function deleteProject() {
+  if (!confirm("Delete entire project?")) return;
+
+  await fetch(
+    `${BASE}/api/image-delete?uid=${view_uid.value}&promptId=${view_promptId.value}`,
+    { method: "DELETE" }
+  );
+
+  document.getElementById("images").innerHTML = "";
+  alert("Project deleted ❌");
 }
 </script>
 
