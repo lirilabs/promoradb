@@ -1,209 +1,92 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PromoraDB Dashboard</title>
+<title>PromoraDB</title>
 
 <style>
-body {
-  margin: 0;
-  font-family: system-ui;
-  background: #0f172a;
-  color: #fff;
-}
-
-header {
-  padding: 15px;
-  background: #020617;
-  text-align: center;
-  font-size: 20px;
-  font-weight: bold;
-}
-
-.container {
-  padding: 20px;
-}
-
-.card {
-  background: #1e293b;
-  padding: 15px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-}
-
-input, button {
-  padding: 10px;
-  margin: 5px 0;
-  border-radius: 8px;
-  border: none;
-  width: 100%;
-}
-
-button {
-  background: #22c55e;
-  cursor: pointer;
-  font-weight: bold;
-}
-
-button:hover {
-  opacity: 0.8;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px,1fr));
-  gap: 10px;
-}
-
-.image-card {
-  background: #020617;
-  padding: 10px;
-  border-radius: 10px;
-  text-align: center;
-}
-
-img {
-  width: 100%;
-  border-radius: 8px;
-}
-
-.actions button {
-  margin-top: 5px;
-  background: #ef4444;
-}
-
-.project-actions {
-  display: flex;
-  gap: 10px;
-}
+body { background:#0f172a;color:#fff;font-family:sans-serif }
+.container { padding:20px }
+input,button { padding:10px;margin:5px;border-radius:8px;border:none }
+button { background:#22c55e;cursor:pointer }
+.grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px }
+.card { background:#1e293b;padding:10px;border-radius:10px;text-align:center }
+img { width:100%;border-radius:8px }
 </style>
 </head>
 
 <body>
 
-<header>🚀 PromoraDB Dashboard</header>
-
 <div class="container">
 
-<!-- ================= UPLOAD ================= -->
-<div class="card">
-<h3>📤 Upload Image</h3>
-
+<h2>📤 Upload Image</h2>
 <input id="uid" placeholder="User ID">
-<input id="promptId" placeholder="Project ID">
-<input id="imageUrl" placeholder="Image URL">
+<input id="pid" placeholder="Project ID">
+<input type="file" id="file">
+<button onclick="upload()">Upload</button>
 
-<button onclick="upload()">Upload Image</button>
-</div>
+<h2>📂 Load Project</h2>
+<button onclick="load()">Load Images</button>
+<button onclick="deleteProject()" style="background:red">Delete Project</button>
 
-<!-- ================= PROJECT CONTROL ================= -->
-<div class="card">
-<h3>📂 Project Control</h3>
-
-<input id="view_uid" placeholder="User ID">
-<input id="view_promptId" placeholder="Project ID">
-
-<div class="project-actions">
-  <button onclick="loadImages()">Load Images</button>
-  <button onclick="deleteProject()" style="background:red;">Delete Project</button>
-</div>
-</div>
-
-<!-- ================= IMAGES ================= -->
-<div class="card">
-<h3>🖼 Images</h3>
 <div id="images" class="grid"></div>
-</div>
 
 </div>
 
 <script>
 const BASE = "https://promoradb.vercel.app";
 
-// ================= UPLOAD =================
-async function upload() {
-  const res = await fetch(BASE + "/api/image-store", {
-    method: "POST",
-    headers: {"Content-Type": "application/json"},
-    body: JSON.stringify({
-      uid: uid.value,
-      promptId: promptId.value,
-      imageUrl: imageUrl.value
-    })
+async function upload(){
+  const file = document.getElementById("file").files[0];
+
+  const fd = new FormData();
+  fd.append("uid", uid.value);
+  fd.append("promptId", pid.value);
+  fd.append("file", file);
+
+  await fetch(BASE+"/api/image-store",{
+    method:"POST",
+    body:fd
   });
 
-  const data = await res.json();
-  alert("Uploaded ✅");
+  alert("Uploaded");
 }
 
-// ================= LOAD =================
-async function loadImages() {
-  const res = await fetch(
-    `${BASE}/api/image-serve?uid=${view_uid.value}&promptId=${view_promptId.value}`
-  );
-
+async function load(){
+  const res = await fetch(`${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}`);
   const data = await res.json();
-  renderImages(data.images || []);
-}
 
-// ================= RENDER =================
-function renderImages(images) {
-  const container = document.getElementById("images");
-  container.innerHTML = "";
+  images.innerHTML="";
 
-  if (images.length === 0) {
-    container.innerHTML = "<p>No images found</p>";
-    return;
-  }
+  data.images.forEach(img=>{
+    const div=document.createElement("div");
+    div.className="card";
 
-  images.forEach(img => {
-    const div = document.createElement("div");
-    div.className = "image-card";
-
-    div.innerHTML = `
-      <img src="${img.cdnUrl}" />
-      <small>${img.filename}</small>
-
-      <div class="actions">
-        <button onclick="viewImage('${img.filename}')">View</button>
-        <button onclick="deleteImage('${img.filename}')">Delete</button>
-      </div>
+    div.innerHTML=`
+      <img src="${img.cdnUrl}">
+      <button onclick="view('${img.filename}')">View</button>
+      <button onclick="del('${img.filename}')" style="background:red">Delete</button>
     `;
 
-    container.appendChild(div);
+    images.appendChild(div);
   });
 }
 
-// ================= VIEW =================
-function viewImage(filename) {
-  const url = `${BASE}/api/image-serve?uid=${view_uid.value}&promptId=${view_promptId.value}&filename=${filename}`;
-  window.open(url, "_blank");
+function view(file){
+  window.open(`${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}&filename=${file}`);
 }
 
-// ================= DELETE IMAGE =================
-async function deleteImage(filename) {
-  if (!confirm("Delete this image?")) return;
-
-  await fetch(
-    `${BASE}/api/image-delete?uid=${view_uid.value}&promptId=${view_promptId.value}&filename=${filename}`,
-    { method: "DELETE" }
-  );
-
-  loadImages();
+async function del(file){
+  await fetch(`${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}&filename=${file}`,{
+    method:"DELETE"
+  });
+  load();
 }
 
-// ================= DELETE PROJECT =================
-async function deleteProject() {
-  if (!confirm("Delete entire project?")) return;
-
-  await fetch(
-    `${BASE}/api/image-delete?uid=${view_uid.value}&promptId=${view_promptId.value}`,
-    { method: "DELETE" }
-  );
-
-  document.getElementById("images").innerHTML = "";
-  alert("Project deleted ❌");
+async function deleteProject(){
+  await fetch(`${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}`,{
+    method:"DELETE"
+  });
+  images.innerHTML="";
 }
 </script>
 
