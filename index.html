@@ -1,168 +1,67 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>PromoraDB API Tester</title>
-
+<title>PromoraDB</title>
 <style>
-  body {
-    font-family: Arial, sans-serif;
-    background: #0f172a;
-    color: #fff;
-    padding: 20px;
-  }
-
-  h2 {
-    margin-top: 30px;
-  }
-
-  input, button, textarea {
-    width: 100%;
-    padding: 10px;
-    margin-top: 8px;
-    border-radius: 8px;
-    border: none;
-  }
-
-  button {
-    background: #22c55e;
-    color: black;
-    cursor: pointer;
-    font-weight: bold;
-  }
-
-  button:hover {
-    opacity: 0.8;
-  }
-
-  .box {
-    background: #1e293b;
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 20px;
-  }
-
-  img {
-    max-width: 200px;
-    border-radius: 10px;
-    margin-top: 10px;
-  }
-
-  pre {
-    background: #020617;
-    padding: 10px;
-    overflow-x: auto;
-  }
+body { background:#111;color:#fff;font-family:sans-serif }
+input,button { margin:5px;padding:10px;border-radius:8px }
+img { width:120px;margin:10px }
 </style>
 </head>
 <body>
 
-<h1>🚀 PromoraDB API Tester</h1>
-
-<!-- ================= UPLOAD ================= -->
-<div class="box">
-<h2>📤 Upload Image</h2>
-
-<input id="uid" placeholder="uid" />
-<input id="promptId" placeholder="promptId" />
-<input id="imageUrl" placeholder="Image URL (optional)" />
-<textarea id="base64" placeholder="Base64 (optional)"></textarea>
-
+<h2>Upload</h2>
+<input id="uid" placeholder="uid">
+<input id="pid" placeholder="promptId">
+<input id="url" placeholder="image url">
 <button onclick="upload()">Upload</button>
 
-<pre id="uploadResult"></pre>
-</div>
-
-<!-- ================= LIST ================= -->
-<div class="box">
-<h2>📂 List Images</h2>
-
-<input id="list_uid" placeholder="uid" />
-<input id="list_promptId" placeholder="promptId" />
-
-<button onclick="listImages()">Fetch Images</button>
+<h2>List</h2>
+<button onclick="list()">Load</button>
 
 <div id="images"></div>
-</div>
-
-<!-- ================= VIEW ================= -->
-<div class="box">
-<h2>🖼 View Image</h2>
-
-<input id="view_uid" placeholder="uid" />
-<input id="view_promptId" placeholder="promptId" />
-<input id="filename" placeholder="filename (example: 123.webp)" />
-
-<button onclick="viewImage()">View</button>
-
-<img id="preview" />
-</div>
 
 <script>
 const BASE = "https://promoradb.vercel.app";
 
-// ================= UPLOAD =================
-async function upload() {
-  const uid = document.getElementById("uid").value;
-  const promptId = document.getElementById("promptId").value;
-  const imageUrl = document.getElementById("imageUrl").value;
-  const base64 = document.getElementById("base64").value;
-
-  const body = {
-    uid,
-    promptId,
-    imageUrl: imageUrl || undefined,
-    imageBase64: base64 || undefined,
-    mimeType: base64 ? "image/png" : undefined
-  };
-
-  const res = await fetch(`${BASE}/api/image-store`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify(body)
+async function upload(){
+  const res = await fetch(BASE+"/api/image-store",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      uid:uid.value,
+      promptId:pid.value,
+      imageUrl:url.value
+    })
   });
-
-  const data = await res.json();
-  document.getElementById("uploadResult").innerText = JSON.stringify(data, null, 2);
+  alert("Uploaded");
 }
 
-// ================= LIST =================
-async function listImages() {
-  const uid = document.getElementById("list_uid").value;
-  const promptId = document.getElementById("list_promptId").value;
-
-  const res = await fetch(
-    `${BASE}/api/image-serve?uid=${uid}&promptId=${promptId}`
-  );
-
+async function list(){
+  const res = await fetch(`${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}`);
   const data = await res.json();
 
-  const container = document.getElementById("images");
-  container.innerHTML = "";
+  images.innerHTML = "";
 
-  data.images.forEach(img => {
-    const el = document.createElement("div");
+  data.images.forEach(img=>{
+    const div = document.createElement("div");
 
-    el.innerHTML = `
-      <p>${img.filename}</p>
-      <img src="${img.cdnUrl}" />
+    div.innerHTML = `
+      <img src="${img.cdnUrl}">
+      <br>
+      <button onclick="del('${img.filename}')">Delete</button>
+      <hr>
     `;
 
-    container.appendChild(el);
+    images.appendChild(div);
   });
 }
 
-// ================= VIEW =================
-function viewImage() {
-  const uid = document.getElementById("view_uid").value;
-  const promptId = document.getElementById("view_promptId").value;
-  const filename = document.getElementById("filename").value;
-
-  const url = `${BASE}/api/image-serve?uid=${uid}&promptId=${promptId}&filename=${filename}`;
-  document.getElementById("preview").src = url;
+async function del(file){
+  await fetch(`${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}&filename=${file}`,{
+    method:"DELETE"
+  });
+  list();
 }
 </script>
 
