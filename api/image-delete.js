@@ -22,7 +22,7 @@ export default async function handler(req, res) {
 
   const base = `https://api.github.com/repos/${owner}/${repo}/contents`;
 
-  // ================= SINGLE DELETE =================
+  // 🔴 SINGLE DELETE
   if (filename) {
     const path = `storage/${uid}/${promptId}/${filename}`;
     const encoded = path.split("/").map(encodeURIComponent).join("/");
@@ -49,7 +49,7 @@ export default async function handler(req, res) {
     return res.json({ success: true });
   }
 
-  // ================= FULL DELETE =================
+  // 🔴 FULL DELETE
   const dir = `storage/${uid}/${promptId}`;
   const encoded = dir.split("/").map(encodeURIComponent).join("/");
 
