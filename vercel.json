@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "functions": {
+    "api/image-store.js": {
+      "memory": 512,
+      "maxDuration": 30
+    },
+    "api/image-serve.js": {
+      "memory": 256,
+      "maxDuration": 15
+    }
+  },
+  "rewrites": [
+    { "source": "/api/image-store", "destination": "/api/image-store" },
+    { "source": "/api/image-serve", "destination": "/api/image-serve" }
+  ]
+}
