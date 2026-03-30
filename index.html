@@ -1,92 +1,220 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>PromoraDB</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PromoraDB Dashboard</title>
 
 <style>
-body { background:#0f172a;color:#fff;font-family:sans-serif }
-.container { padding:20px }
-input,button { padding:10px;margin:5px;border-radius:8px;border:none }
-button { background:#22c55e;cursor:pointer }
-.grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px }
-.card { background:#1e293b;padding:10px;border-radius:10px;text-align:center }
-img { width:100%;border-radius:8px }
+body {
+  margin: 0;
+  font-family: system-ui;
+  background: #0f172a;
+  color: white;
+}
+
+header {
+  background: #020617;
+  padding: 15px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 18px;
+}
+
+.container {
+  padding: 20px;
+}
+
+.card {
+  background: #1e293b;
+  padding: 15px;
+  border-radius: 12px;
+  margin-bottom: 20px;
+}
+
+input, button {
+  width: 100%;
+  padding: 10px;
+  margin-top: 8px;
+  border-radius: 8px;
+  border: none;
+}
+
+button {
+  background: #22c55e;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+button:hover {
+  opacity: 0.8;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 10px;
+}
+
+.img-card {
+  background: #020617;
+  padding: 10px;
+  border-radius: 10px;
+  text-align: center;
+}
+
+img {
+  width: 100%;
+  border-radius: 8px;
+}
+
+.delete {
+  background: red;
+}
 </style>
 </head>
 
 <body>
 
+<header>🚀 PromoraDB Dashboard</header>
+
 <div class="container">
 
-<h2>📤 Upload Image</h2>
+<!-- ================= UPLOAD ================= -->
+<div class="card">
+<h3>📤 Upload Image</h3>
+
 <input id="uid" placeholder="User ID">
 <input id="pid" placeholder="Project ID">
-<input type="file" id="file">
-<button onclick="upload()">Upload</button>
 
-<h2>📂 Load Project</h2>
+<input type="file" id="file" accept="image/*">
+
+<button onclick="upload()">Upload Image</button>
+</div>
+
+<!-- ================= LOAD ================= -->
+<div class="card">
+<h3>📂 Project</h3>
+
 <button onclick="load()">Load Images</button>
-<button onclick="deleteProject()" style="background:red">Delete Project</button>
+<button onclick="deleteProject()" class="delete">Delete Full Project</button>
+</div>
 
+<!-- ================= IMAGES ================= -->
+<div class="card">
+<h3>🖼 Images</h3>
 <div id="images" class="grid"></div>
+</div>
 
 </div>
 
 <script>
 const BASE = "https://promoradb.vercel.app";
 
-async function upload(){
+// ================= UPLOAD =================
+async function upload() {
+
   const file = document.getElementById("file").files[0];
 
-  const fd = new FormData();
-  fd.append("uid", uid.value);
-  fd.append("promptId", pid.value);
-  fd.append("file", file);
+  if (!file) {
+    alert("Select a file first");
+    return;
+  }
 
-  await fetch(BASE+"/api/image-store",{
-    method:"POST",
-    body:fd
-  });
+  const reader = new FileReader();
 
-  alert("Uploaded");
+  reader.onload = async () => {
+
+    const base64 = reader.result;
+
+    const res = await fetch(BASE + "/api/image-store", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        uid: uid.value,
+        promptId: pid.value,
+        imageBase64: base64
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success) {
+      alert("Uploaded ✅");
+      load();
+    } else {
+      console.error(data);
+      alert("Upload failed ❌");
+    }
+  };
+
+  reader.readAsDataURL(file);
 }
 
-async function load(){
-  const res = await fetch(`${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}`);
+// ================= LOAD =================
+async function load() {
+
+  const res = await fetch(
+    `${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}`
+  );
+
   const data = await res.json();
 
-  images.innerHTML="";
+  const container = document.getElementById("images");
+  container.innerHTML = "";
 
-  data.images.forEach(img=>{
-    const div=document.createElement("div");
-    div.className="card";
+  if (!data.images || data.images.length === 0) {
+    container.innerHTML = "<p>No images found</p>";
+    return;
+  }
 
-    div.innerHTML=`
+  data.images.forEach(img => {
+
+    const div = document.createElement("div");
+    div.className = "img-card";
+
+    div.innerHTML = `
       <img src="${img.cdnUrl}">
+      <small>${img.filename}</small>
+
       <button onclick="view('${img.filename}')">View</button>
-      <button onclick="del('${img.filename}')" style="background:red">Delete</button>
+      <button class="delete" onclick="del('${img.filename}')">Delete</button>
     `;
 
-    images.appendChild(div);
+    container.appendChild(div);
   });
 }
 
-function view(file){
-  window.open(`${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}&filename=${file}`);
+// ================= VIEW =================
+function view(filename) {
+  const url = `${BASE}/api/image-serve?uid=${uid.value}&promptId=${pid.value}&filename=${filename}`;
+  window.open(url, "_blank");
 }
 
-async function del(file){
-  await fetch(`${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}&filename=${file}`,{
-    method:"DELETE"
-  });
+// ================= DELETE IMAGE =================
+async function del(filename) {
+  if (!confirm("Delete this image?")) return;
+
+  await fetch(
+    `${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}&filename=${filename}`,
+    { method: "DELETE" }
+  );
+
   load();
 }
 
-async function deleteProject(){
-  await fetch(`${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}`,{
-    method:"DELETE"
-  });
-  images.innerHTML="";
+// ================= DELETE PROJECT =================
+async function deleteProject() {
+  if (!confirm("Delete full project?")) return;
+
+  await fetch(
+    `${BASE}/api/image-delete?uid=${uid.value}&promptId=${pid.value}`,
+    { method: "DELETE" }
+  );
+
+  document.getElementById("images").innerHTML = "";
 }
 </script>
 
